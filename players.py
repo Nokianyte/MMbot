@@ -4,9 +4,9 @@ from map import *
 class Player:
     def __init__(
         self, 
-        user: tuple, 
+        user: tuple, #discord user
         name: str, 
-        text_channel_id: int, 
+        text_channel_id: int, #каждому игроку генерируется личный текстовый канал для написания команд
         voice_channel_id: int, 
         traits: list, 
         xCoord: float, 
@@ -56,11 +56,11 @@ class Player:
 
 # self.cooldown = int((16-self.statStrength)*0.5) UNIVERSAL COOLDOWN
 
-    def move(self, direction): # позже переделаю во внешний метод и перенесу в main
+    def move(self, direction): # передвижение между клетками, позже переделаю во внешний метод и перенесу в main
         if type(self.xCoord)==int and type(self.yCoord)==int:
             board[self.xCoord][self.yCoord].players.remove(self.name)
 
-            if self.action!='hiding':
+            if self.action!='hiding': #проверяет, нет ли там, куда перемещается/откуда уходит игрок других игроков. в случае надобности создаёт/удаляет канал или перемещает игрока в существующий
                 for player in player_list:
                     if ((self.xCoord+(direction=='west')>player.xCoord>self.xCoord-(direction=='east') and self.yCoord==player.yCoord) or (self.yCoord+(direction=='north')>player.yCoord>self.yCoord-(direction=='south') and self.xCoord==player.xCoord)) and player.action not in ['hiding','sleeping','knockedout','faking_sleeping','faking_knockedout','faking_dead']:
                         move_to_vc(player.voice_channel_id)
@@ -69,7 +69,7 @@ class Player:
                         self.voice_channel_id = player.voice_channel_id
                         break
 
-            if self.voice_channel_id == board[self.xCoord][self.yCoord].channel:
+            if self.voice_channel_id == board[self.xCoord][self.yCoord].channel: #при ненадобности голосовой канал удаляется
                 self.voice_channel_id = create_vc(self.name)
                 move_to_vc(self.voice_channel_id)
                 if len(board[self.xCoord][self.yCoord].players)==0:
@@ -83,7 +83,7 @@ class Player:
             self.yCoord = round(self.yCoord)
             board[self.xCoord][self.yCoord].players.append(self.name)
 
-            if self.action!='hiding':
+            if self.action!='hiding': #если игрок "прячется", не закидывает его в голосовой к остальным
                 for player in player_list:
                     if player.voice_channel_id==self.voice_channel_id:
                         self.voice_channel_id = None
@@ -121,6 +121,8 @@ class Player:
 #                    board[self.xCoord][self.yCoord].channel=create_vc(board[self.xCoord][self.yCoord].Type)
 #                    move_to_vc(board[self.xCoord][self.yCoord].channel)
 #                board[self.xCoord][self.yCoord].players.append(self.name)
+
+# далее не до конца реализованные механики, пока без документации
 
     def run():
         pass
@@ -333,7 +335,7 @@ class Player:
             self.die()
 
         match self.action:
-            case 'walking':
+            case 'walking': #будет переделано
                 xStep=((direction=='east')-(direction=='west'))*(board[int(self.xCoord)][self.yCoord].terrain_bonus+board[int(self.xCoord)+1][self.yCoord].terrain_bonus+self.modStrength) # CALCULATIONS NEEDED
                 yStep=((direction=='north')-(direction=='south'))*(board[self.xCoord][int(self.yCoord)].terrain_bonus+board[self.xCoord][int(self.yCoord)+1].terrain_bonus+self.modStrength) # CALCULATIONS NEEDED
                 if int(self.xCoord)==int(self.xCoord+xStep) and int(self.yCoord)==int(self.yCoord+yStep) and self.xCoord+xStep!=int(self.xCoord) and self.yCoord+yStep!=int(self.yCoord):
@@ -343,7 +345,7 @@ class Player:
                     message()
                     self.action=None
 
-            case 'running':
+            case 'running': #будет переделано
                 xStep=((direction=='east')-(direction=='west'))*(board[int(self.xCoord)][self.yCoord].terrain_bonus+board[int(self.xCoord)+1][self.yCoord].terrain_bonus+self.modStrength) # CALCULATIONS NEEDED
                 yStep=((direction=='north')-(direction=='south'))*(board[self.xCoord][int(self.yCoord)].terrain_bonus+board[self.xCoord][int(self.yCoord)+1].terrain_bonus+self.modStrength) # CALCULATIONS NEEDED
                 if int(self.xCoord)==int(self.xCoord+xStep) and int(self.yCoord)==int(self.yCoord+yStep) and self.xCoord+xStep!=int(self.xCoord) and self.yCoord+yStep!=int(self.yCoord):
@@ -353,7 +355,7 @@ class Player:
                     message()
                     self.action=None
 
-            case 'looting':
+            case 'looting': #предметы добавляются в инвнтарь к игроку по истечению кулдауна
                 if self.ticks=='0':
                     item = board[self.xCoord][self.yCoord].loot.pop(random.randint(0,len(board[self.xCoord][self.yCoord].loot)-1))
                     board[self.xCoord][self.yCoord].loot.append(None)
@@ -363,7 +365,7 @@ class Player:
                     self.ticks=int((16-self.statStrength)+5) #VARIABLE
             case 'hunting':
                 pass
-            case 'hiding':
+            case 'hiding': #верояность потерять статус
                 if self.cooldown == 0:
                     if randint(0,900)<=(1-self.statStrength/16): #VARIABLE
                         self.wake_up()

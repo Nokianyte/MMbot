@@ -13,7 +13,7 @@ class Room:
             burning: bool
             ):
                 
-        self.channel = channel
+        self.channel = channel #голосовой канал
         self.Type = Type
         self.terrain_bonus = terrain_bonus
         self.yCoord = yCoord
