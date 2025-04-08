@@ -1,12 +1,43 @@
 import asyncio
+from map import *
 
 class Player:
-    def __init__(self, user, name, text_channel_id, voice_channel_id, constTraits, xCoord, yCoord, direction, inventory, action, ticks, cooldown, statWarmth, statHunger, statHealth, statSanity, statStamina, statWeight, maxWeight, modWarmth, modHunger, modHealth, modSanity, modStamina, modStrength, condition):
+    def __init__(
+        self, 
+        user: tuple, 
+        name: str, 
+        text_channel_id: int, 
+        voice_channel_id: int, 
+        traits: list, 
+        xCoord: float, 
+        yCoord: float, 
+        direction: int, 
+        inventory: list, 
+        action: str, 
+        ticks: int, 
+        cooldown: int, 
+        stats: dict,
+#        statWarmth, 
+#        statHunger, 
+#        statHealth, 
+#        statSanity, 
+#        statStamina, 
+#        statWeight, 
+        maxWeight: float,
+        modifiers: dict, 
+#        modWarmth, 
+#        modHunger, 
+#        modHealth, 
+#        modSanity, 
+#        modStamina, 
+#        modStrength, 
+        conditions: list
+    ):
         self.user = user
         self.name = name
         self.text_channel_id = text_channel_id
         self.voice_channel_id = voice_channel_id
-        self.constTraits = constTraits
+        self.traits = traits
 
         self.xCoord = xCoord
         self.yCoord = yCoord
@@ -16,29 +47,16 @@ class Player:
         self.ticks = ticks
         self.cooldown = cooldown
 
-        self.statWarmth = statWarmth
-        self.statHunger = statHunger
-        self.statHealth = statHealth
-        self.statSanity = statSanity
-        self.statStamina = statStamina
-        self.statWeight = statWeight
-
+        self.stats = stats
         self.maxWeight = maxWeight
-
-        self.modWarmth = modWarmth
-        self.modHunger = modHunger
-        self.modHealth = modHealth
-        self.modSanity = modSanity
-        self.modStamina = modStamina
-        self.modStrength = modStrength
-
-        self.condition = condition
+        self.modifiers = modifiers
+        self.conditions = conditions
 
 # conditions: encumbered, burning, bleeding, poisoned
 
 # self.cooldown = int((16-self.statStrength)*0.5) UNIVERSAL COOLDOWN
 
-    def move(direction):
+    def move(self, direction): # позже переделаю во внешний метод и перенесу в main
         if type(self.xCoord)==int and type(self.yCoord)==int:
             board[self.xCoord][self.yCoord].players.remove(self.name)
 
@@ -107,44 +125,44 @@ class Player:
     def run():
         pass
 
-    def loot():
+    def loot(self):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.ticks=int((16-self.statStrength)+5) 
             self.action = 'looting'
         else: message()
 
-    def give(player, object):
+    def give(self, player, object):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             pass
         else: message()
 
-    def search_player(player):
+    def search_player(self, player):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             pass
         else: message()
 
-    def craft(object):
+    def craft(self, object):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             pass
         else: message()
 
-    def use(object, action):
+    def use(self, object, action):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             pass
         else: message()
 
-    def hunt():
+    def hunt(self):
         if self.action == 'hiding' and self.cooldown == -1:
             self.ticks=int((16-self.statStrength)+5) 
             self.action = 'hunting'
         else: message()
 
-    def attack(player):
+    def attack(self, player):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.action = 'attacking'
         else: message()
 
-    def hide():
+    def hide(self):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.action = 'hiding'
             for player in player_list:
@@ -155,12 +173,12 @@ class Player:
             
         else: message()
 
-    def rest():
+    def rest(self):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.action = 'resting'
         else: message()
 
-    def sleep():
+    def sleep(self):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.action = 'sleeping'
             for player in player_list:
@@ -170,7 +188,7 @@ class Player:
                     break
         else: message()
 
-    def fakeDeath():
+    def fakeDeath(self):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.action = 'faking_dead'
             for player in player_list:
@@ -180,7 +198,7 @@ class Player:
                     break
         else: message()
 
-    def fakeKnockOut():
+    def fakeKnockOut(self):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.action = 'faking_knockedout'
             for player in player_list:
@@ -190,7 +208,7 @@ class Player:
                     break
         else: message()
 
-    def fakeSleep():
+    def fakeSleep(self):
         if self.action != 'sleeping' and self.action != 'knockedout' and self.cooldown == -1:
             self.action = 'faking_sleeping'
             for player in player_list:
@@ -200,7 +218,7 @@ class Player:
                     break
         else: message()
 
-    def wake_up(): # later
+    def wake_up(self): # later
 
         if self.action == 'sleeping':
             if self.statStamina >= 60:
@@ -252,7 +270,9 @@ class Player:
     def quit():
         pass
 
-    def tick():
+
+
+    def tick(self): #данная функция запускается тактовым генератором из main для каждого объекта player. она проверяет ряд значений полей объекта, изменяет их. выглядит неэффективно, определённо требует оптимизации
 
         if self.statWarmth>100: self.statWarmth=100
         if self.statHunger>100: self.statHunger=100
@@ -266,9 +286,9 @@ class Player:
         if self.statStamina>=50 and self.statStamina+self.modStamina<=50: message()
 
         if self.statStamina<50:
-            if randint(0,100)<=((50-self.statStamina)/50)*10: sleep()
+            if randint(0,100)<=((50-self.statStamina)/50)*10: self.sleep()
         if self.statSanity<50:
-            if randint(0,100)<=((50-self.statSanity)/50)*10: breakdown()
+            if randint(0,100)<=((50-self.statSanity)/50)*10: self.breakdown()
 
         self.ticks-=1
         self.statWarmth+=self.modWarmth
@@ -306,11 +326,11 @@ class Player:
         if self.statHunger<0:
             self.statHunger=0
         if self.statHealth<=0:
-            die()
+            self.die()
         if self.statSanity<=0:
-            die()
+            self.die()
         if self.statStamina<=0:
-            die()
+            self.die()
 
         match self.action:
             case 'walking':
@@ -346,13 +366,13 @@ class Player:
             case 'hiding':
                 if self.cooldown == 0:
                     if randint(0,900)<=(1-self.statStrength/16): #VARIABLE
-                        wake_up()
-                        triggerQTE()
+                        self.wake_up()
+                        self.triggerQTE()
             case 'resting':
                 self.modStamina=0.1
             case 'sleeping':
                 if self.statStamina>=100:
-                    wake_up()
+                    self.wake_up()
                 else:
                     self.modStamina=0.4
             case 'breakdown':
@@ -366,7 +386,10 @@ class Player:
             case 'knockedout':
                 self.modStamina=0.07
                 if self.cooldown=='0':
-                    wake_up()            
+                    self.wake_up()            
+
+
+
 
 player_list = []
 
@@ -381,5 +404,5 @@ def find_player(name):
         if player_list[i].name==name:
             return i
 
-async def message(name):
+async def message(name): #переместить в main
     bot.get_channel(player_list[find_player(name)].text_channel_id)

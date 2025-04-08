@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix='$', intents=intents)
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
 
-class MyCog(commands.Cog):
+class MyCog(commands.Cog): #генератор тиков
     def __init__(self):
         self.index = 0
         self.printer.start()
@@ -31,6 +31,8 @@ class MyCog(commands.Cog):
     async def printer(self):
         print(self.index)
         self.index += 1
+
+# СПИСОК КОМАНД
 
 @bot.command()
 async def foo(ctx, arg):
