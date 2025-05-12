@@ -1,11 +1,16 @@
-# bot.py
+# client.py
 import os
 
+import json
+from random import randint
+
 import discord
+from discord import app_commands
 from dotenv import load_dotenv
 from discord.ext import tasks, commands
 
-from players import *
+from player.players import *
+from map.map import *
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -13,35 +18,41 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='$', intents=intents)
+client = discord.Client(intents=intents)
 
-@bot.event
+tree = app_commands.CommandTree(client)
+
+@client.event
 async def on_ready():
-    print(f'{bot.user} has connected to Discord!')
+    await tree.sync(guild=discord.Object(id=1370677493685817344))
+    print("Ready!")
 
-class MyCog(commands.Cog): #генератор тиков
+class Timer(commands.Cog): #генератор тиков
     def __init__(self):
-        self.index = 0
-        self.printer.start()
+        self.trigger.start()
 
-    def cog_unload(self):
-        self.printer.cancel()
+    def stop(self):
+        self.trigger.cancel()
 
-    @tasks.loop(seconds=1.0)
-    async def printer(self):
-        print(self.index)
-        self.index += 1
+    @tasks.loop(seconds=10.0) # триггерится каждые 2 секунды
+    async def trigger(self):
+        for player in player_dict: tick(player)
 
 # СПИСОК КОМАНД
-
-@bot.command()
+'''
+@client.command()
 async def foo(ctx, arg):
     await ctx.send(arg)
 
-@bot.command()
+@tree.command(
+    name="join",
+    description="must be in a voice channel",
+    guild=discord.Object(id=1370677493685817344)
+)
 async def join(ctx):
-    member = ctx.author
+    member = ctx.user
     guild = ctx.guild
+    
     channel_name = member.name
 
     overwrites = {
@@ -50,46 +61,251 @@ async def join(ctx):
     }
 
     new_channel = await guild.create_text_channel(channel_name, overwrites=overwrites)
+    
+    add_player(user=member)
+    await ctx.response.send_message('_',ephemeral=True)
 
-    add_player(user=member, channel=new_channel.id)
-    print(player_list)
-
-@bot.command()
+@client.command()
 async def clone(ctx, arg):
-    channel = bot.get_channel(1262061733606981714)
+    channel = client.get_channel(1262061733606981714)
     await channel.clone(name=arg)
-
-@bot.command()
+'''
+@tree.command(
+    name="quit",
+    description="quits the game",
+    guild=discord.Object(id=1370677493685817344)
+)
 async def leave(ctx, user: discord.Member = None):
     remove_player(user)
-    print(player_list)
-
-@bot.command()
+'''
+@client.command()
 async def stat(ctx, user: discord.Member = None):
-    print(player_list[find_player(user)].statHealth)
+    if user == None:
+        print(player_dict[find_player(ctx.author.nick)].stats)
+'''
 
+@tree.command(
+    name="start_game",
+    description="must be in a voice channel",
+    guild=discord.Object(id=1370677493685817344)
+)
+async def start(ctx):
+    lobby_channel = client.get_channel(1370677494147186761)
+
+    for member in lobby_channel.members:
+
+        overwrite = discord.PermissionOverwrite()
+        overwrite.view_channel = False
+
+        await lobby_channel.set_permissions(member, overwrite = overwrite)
+
+        new_channel = await ctx.guild.create_text_channel('🎮', overwrites = {
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            member: discord.PermissionOverwrite(read_messages=True)
+        })
+
+        add_player(member.id, member.nick, new_channel.id)
+
+    with open('player/player_dict.json', 'w') as f:
+        json.dump(player_dict, f)
+
+    generate_map()
+
+    await spawn_players(ctx)
+
+    #Timer()
+
+    await ctx.response.send_message('Игра началась!',ephemeral=False)
+
+@tree.command(
+    name="move",
+    description="between tiles",
+    guild=discord.Object(id=1370677493685817344)
+)
+@app_commands.choices(choices=[
+    app_commands.Choice(name="north", value=0),
+    app_commands.Choice(name="south", value=1),
+    app_commands.Choice(name="east", value=2),
+    app_commands.Choice(name="west", value=3)
+])
+async def move(ctx, choices: app_commands.Choice[int]):
+
+    players_json = open('player/player_dict.json')
+    board_json = open('map/board.json')
+
+    player_dict = json.load(players_json)
+    board = json.load(board_json)
+
+    player = player_dict[str(ctx.user.id)]
+
+    old_tile = board[player['xCoord']][player['yCoord']]
+
+    match choices.value:
+        case 0:
+            if player['yCoord'] < len(board):
+                new_tile = board[player['xCoord']][player['yCoord'] + 1]
+                player['yCoord'] += 1
+            else: 
+                await ctx.response.send_message('At border',ephemeral=True)
+                return
+        case 1:
+            if player['yCoord'] > 0:
+                new_tile = board[player['xCoord']][player['yCoord'] - 1]
+                player['yCoord'] -= 1
+            else: 
+                await ctx.response.send_message('At border',ephemeral=True)
+                return
+        case 2:
+            if player['xCoord'] < len(board):
+                new_tile = board[player['xCoord'] + 1][player['yCoord']]
+                player['xCoord'] += 1
+            else: 
+                await ctx.response.send_message('At border',ephemeral=True)
+                return
+        case 3:
+            if player['xCoord'] > 0:
+                new_tile = board[player['xCoord'] - 1][player['yCoord']]
+                player['xCoord'] -= 1
+            else: 
+                await ctx.response.send_message('At border',ephemeral=True)
+                return
+
+    old_tile['players'].remove(str(ctx.user.id))
+    new_tile['players'].append(str(ctx.user.id))
+
+    if len(new_tile['players']) == 1:
+        new_tile['channel'] = await create_vc(ctx, new_tile['type'])
+
+    await move_to_vc(ctx, ctx.user.id, new_tile['channel'])
+
+    if len(old_tile['players']) == 0:
+        old_tile['channel'] = await delete_channel(old_tile['channel'])
+
+    players_json.close()
+    board_json.close()
+
+    with open('player/player_dict.json', 'w') as f: json.dump(player_dict, f)
+    with open('map/board.json', 'w') as f: json.dump(board, f)
+
+    await ctx.response.send_message(f"Moved to {new_tile['type']}",ephemeral=True)
+            
 ##
 
-def create_lobby(mode):
-    ## adds everyone sitting in a set voice chennel to player list
-    pass
+async def create_vc(ctx, channel_name):
+    guild = ctx.guild
 
-def create_vc(name):
-    channel = bot.get_channel(1262061733606981714)
-    channel.clone(name=name)
-    new_channel = discord.utils.get(ctx.guild.channels, name=name)
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False)
+    }
+
+    new_channel = await guild.create_voice_channel(channel_name, overwrites=overwrites)
     return new_channel.id
 
-def delete_channel(id):
-    channel = bot.get_channel(id)
-    channel.delete()
+async def delete_channel(id):
+    channel = client.get_channel(id)
+    await channel.delete()
     return None
 
-def move_to_vc(user, id):
-    channel = bot.get_channel(id)
-    user.move_to(channel)
+async def move_to_vc(ctx, user_id, channel_id):
+    channel = client.get_channel(channel_id)
+    user = await ctx.guild.fetch_member(user_id)
+    await user.move_to(channel)
 
-bot.run(TOKEN)
+#внутреигровые функции
+
+async def spawn_players(ctx):
+
+    players_json = open('player/player_dict.json')
+    board_json = open('map/board.json')
+    values_json = open('ingame_values.json')
+
+    player_dict = json.load(players_json)
+    board = json.load(board_json)
+    values = json.load(values_json)
+
+    xSpawn = values['spawn_point']['xCoord']
+    ySpawn = values['spawn_point']['yCoord']
+
+    spawn_point = board[xSpawn][ySpawn]
+
+    spawn_point['channel'] = await create_vc(ctx, spawn_point['type'])
+
+    for user_id, player in player_dict.items():
+        spawn_point['players'].append(user_id)
+        player['xCoord'], player['yCoord'] = xSpawn, ySpawn
+        await move_to_vc(ctx, user_id, spawn_point['channel'])
+
+    players_json.close()
+    board_json.close()
+    values_json.close()
+
+    with open('player/player_dict.json', 'w') as f : json.dump(player_dict, f)
+    with open('map/board.json', 'w') as f : json.dump(board, f)
+
+async def tick(self): #данная функция запускается тактовым генератором для каждого объекта player. она проверяет ряд значений полей объекта, изменяет их. выглядит неэффективно, определённо требует оптимизации
+
+    if self.statWarmth>100: self.statWarmth=100
+    if self.statHunger>100: self.statHunger=100
+    if self.statSanity>100: self.statSanity=100
+    if self.statStamina>100: self.statStamina=100
+
+    if self.statWarmth>=50 and self.statWarmth+self.modWarmth<=50: pass#await message()
+    if self.statHunger>=50 and self.statHunger+self.modHunger<=50: pass#await message()
+    if self.statHealth>=50 and self.statHealth+self.modHealth<=50: pass#await message()
+    if self.statSanity>=50 and self.statSanity+self.modSanity<=50: pass#await message()
+    if self.statStamina>=50 and self.statStamina+self.modStamina<=50: pass#await message()
+
+    if self.statStamina<50:
+        if randint(0,100)<=((50-self.statStamina)/50)*10: self.sleep()
+    if self.statSanity<50:
+        if randint(0,100)<=((50-self.statSanity)/50)*10: self.breakdown()
+
+    self.ticks-=1
+    self.statWarmth+=self.modWarmth
+    self.statHunger+=self.modHunger
+    self.statHealth+=self.modHealth
+    self.statSanity+=self.modSanity
+    self.statStamina+=self.modStamina
+    if self.cooldown>-1: self.cooldown-=1
+
+    self.modStrength = self.statWarmth*self.statHunger*self.statHealth*self.statStamina*(1-self.statWeight/20)*(0.02**4) #VARIABLE
+
+    self.modWarmth=0 #later
+    self.modHunger=-0.07
+    self.modHealth=(-(Condition.BLEEDING in self.condition)-(Condition.POISONED in self.condition)-(Condition.BURNING in self.condition)*2+((self.statWarmth-50)-abs(self.statWarmth-50)*0.5)*0.01+((self.statHunger-50)-abs(self.statHunger-50)*0.5)*0.01)*0.2 #VARIABLE
+    self.modSanity=((self.statWarmth-50)+(self.statHunger-50)+(self.statHealth-50)+(self.statStamina-50)-100)*0.01*0.07 #VARIABLE
+ #   self.modStamina=-(self.statWeight/self.maxWeight)*0.07+(-(self.action=='walking')-(self.action=='running')*3-(self.action=='hunting')-(self.action=='hiding'))*0.5*0.07-0.07 #VARIABLE
+
+    if self.statWarmth<0: self.statWarmth=0
+    if self.statHunger<0: self.statHunger=0
+    if self.statHealth<=0: self.die()
+    if self.statSanity<=0: self.die()
+    if self.statStamina<=0: self.die()
+
+    match self.action:
+        case Action.LOOTING: #предметы добавляются в инвнтарь к игроку по истечению кулдауна
+            if self.ticks==0:
+                item = board[self.xCoord][self.yCoord].loot.pop(randint(0,len(board[self.xCoord][self.yCoord].loot)-1))
+                board[self.xCoord][self.yCoord].loot.append(None)
+                if item != None:
+                    self.inventory.append(item)
+#                    message() 
+                self.ticks=int((16-self.statStrength)+5) #VARIABLE
+        case Action.RESTING:
+            self.modStamina=0.1
+        case Action.SLEEPING:
+            if self.statStamina>=100:
+                self.wake_up()
+            else:
+                self.modStamina=0.4
+        case Action.BREAKDOWN:
+            pass
+        case Action.KNOCKEDOUT:
+            self.modStamina=0.07
+            if self.cooldown=='0':
+                self.wake_up()            
+
+client.run(TOKEN)
 
 #channel = discord.utils.get(ctx.guild.channels, name=given_name)
 #channel_id = channel.id

@@ -1,8 +1,21 @@
+from enum import Enum
+
+class item_tags(Enum):
+    FOOD = 1
+    CONSUMABLE = 2
+    STORAGE = 3
+    CLOTHES = 4
+    MELEE = 5
+    RANGED = 6
+    AMMO = 7
+    TRAP = 7
+    RESOURSE = 8
+    OTHER = 9
+
 class Item:
-    def __init__(self, name, id, type, char, weight):
+    def __init__(self, name: str, tags: item_tags, char: int, weight: float):
         self.name=name
-        self.id=id
-        self.type=type
+        self.tags=tags
         self.char=char
         self.weight=weight
 
@@ -17,6 +30,8 @@ item_list = [
     Item('Жаренная рыба',6,'food',30,0.2),
     Item('Человеческое мясо',7,'food',10,0.3),
     Item('Жаренное человеческое мясо',8,'food',30,0.3),
+    #ягоды
+    #грибы
 
     Item('Антибиотики',9,'consumable',None,0.1),
     Item('Бинты',10,'consumable',None,0.1),
