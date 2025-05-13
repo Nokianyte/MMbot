@@ -77,40 +77,33 @@ async def clone(ctx, arg):
 )
 async def leave(ctx):
 
-    players_json = open('player/player_dict.json')
-    board_json = open('map/board.json')
-    values_json = open('ingame_values.json')
+    global player_dict
+    global board
 
-    player_dict = json.load(players_json)
-    board = json.load(board_json)
-    ing_values = json.load(values_json)
-
-    user = str(ctx.user.id)
+    user = ctx.user.id
     player = player_dict[user]
-    tile = board[player['xCoord']][player['yCoord']]
+    tile = board[player.xCoord][player.yCoord]
 
-    await delete_channel(player['text_channel_id'])
+    await delete_channel(player.text_channel_id)
     player_dict.pop(user)
-    tile['players'].remove(user)
+    tile.players.remove(user)
 
     await move_to_vc(ctx, int(user), None)
 
-    if len(tile['players']) == 0:
-        tile['channel'] = await delete_channel(tile['channel'])
+    if len(tile.players) == 0:
+        tile.channel = await delete_channel(tile.channel)
 
-    lobby_channel = client.get_channel(ing_values['lobby_channel_id'])
+    with open('ingame_values.json') as f:
 
-    overwrite = discord.PermissionOverwrite()
-    overwrite.view_channel = True
+        ing_values = json.load(f)
 
-    await lobby_channel.set_permissions(ctx.user, overwrite = overwrite)
+        lobby_channel = client.get_channel(ing_values['lobby_channel_id'])
 
-    players_json.close()
-    board_json.close()
-    values_json.close()
+        overwrite = discord.PermissionOverwrite()
+        overwrite.view_channel = True
 
-    with open('player/player_dict.json') as f : json.dump(player_dict, f)
-    with open('map/board.json') as f : json.dump(board, f)
+        await lobby_channel.set_permissions(ctx.user, overwrite = overwrite)
+
 
 '''
 @client.command()
@@ -126,12 +119,11 @@ async def stat(ctx, user: discord.Member = None):
 )
 async def start(ctx):
 
-    values_json = open('ingame_values.json')
-    ing_values = json.load(values_json)
+    global board
+
+    ing_values = load_values()
 
     lobby_channel = client.get_channel(ing_values['lobby_channel_id'])
-
-    values_json.close()
 
     for member in lobby_channel.members:
 
@@ -147,10 +139,7 @@ async def start(ctx):
 
         add_player(member.id, member.nick, new_channel.id)
 
-    with open('player/player_dict.json', 'w') as f:
-        json.dump(player_dict, f)
-
-    generate_map()
+    board = generate_map()
 
     await spawn_players(ctx)
 
@@ -171,64 +160,55 @@ async def start(ctx):
 ])
 async def move(ctx, choices: app_commands.Choice[int]):
 
-    players_json = open('player/player_dict.json')
-    board_json = open('map/board.json')
+    global player_dict
+    global board
 
-    player_dict = json.load(players_json)
-    board = json.load(board_json)
+    player = player_dict[ctx.user.id]
 
-    player = player_dict[str(ctx.user.id)]
-
-    old_tile = board[player['xCoord']][player['yCoord']]
+    old_tile = board[player.xCoord][player.yCoord]
 
     match choices.value:
         case 0:
-            if player['yCoord'] < len(board):
-                new_tile = board[player['xCoord']][player['yCoord'] + 1]
-                player['yCoord'] += 1
+            if player.yCoord < len(board):
+                new_tile = board[player.xCoord][player.yCoord + 1]
+                player.yCoord += 1
             else: 
                 await ctx.response.send_message('At border',ephemeral=True)
                 return
         case 1:
-            if player['yCoord'] > 0:
-                new_tile = board[player['xCoord']][player['yCoord'] - 1]
-                player['yCoord'] -= 1
+            if player.yCoord > 0:
+                new_tile = board[player.xCoord][player.yCoord - 1]
+                player.yCoord -= 1
             else: 
                 await ctx.response.send_message('At border',ephemeral=True)
                 return
         case 2:
-            if player['xCoord'] < len(board):
-                new_tile = board[player['xCoord'] + 1][player['yCoord']]
-                player['xCoord'] += 1
+            if player.xCoord < len(board):
+                new_tile = board[player.xCoord + 1][player.yCoord]
+                player.xCoord += 1
             else: 
                 await ctx.response.send_message('At border',ephemeral=True)
                 return
         case 3:
-            if player['xCoord'] > 0:
-                new_tile = board[player['xCoord'] - 1][player['yCoord']]
-                player['xCoord'] -= 1
+            if player.xCoord > 0:
+                new_tile = board[player.xCoord - 1][player.yCoord]
+                player.xCoord -= 1
             else: 
                 await ctx.response.send_message('At border',ephemeral=True)
                 return
 
-    old_tile['players'].remove(str(ctx.user.id))
-    new_tile['players'].append(str(ctx.user.id))
+    old_tile.players.remove(ctx.user.id)
+    new_tile.players.append(ctx.user.id)
 
-    if len(new_tile['players']) == 1:
-        new_tile['channel'] = await create_vc(ctx, new_tile['type'])
+    if len(new_tile.players) == 1:
+        new_tile.channel = await create_vc(ctx, new_tile.terrain)
 
-    await move_to_vc(ctx, ctx.user.id, new_tile['channel'])
+    await move_to_vc(ctx, ctx.user.id, new_tile.channel)
 
-    if len(old_tile['players']) == 0:
-        old_tile['channel'] = await delete_channel(old_tile['channel'])
+    if len(old_tile.players) == 0:
+        old_tile.channel = await delete_channel(old_tile.channel)
 
-    players_json.close()
-    board_json.close()
-
-    with open('player/player_dict.json', 'w') as f: json.dump(player_dict, f)
-    with open('map/board.json', 'w') as f: json.dump(board, f)
-
-    await ctx.response.send_message(f"Moved to {new_tile['type']}",ephemeral=True)
+    await ctx.response.send_message(f"Moved to {new_tile.terrain}",ephemeral=True)
             
 ##
 
@@ -252,36 +232,30 @@ async def move_to_vc(ctx, user_id, channel_id):
     user = await ctx.guild.fetch_member(user_id)
     await user.move_to(channel)
 
+def load_values():
+    with open('ingame_values.json') as f:
+        return json.load(f)
+
 #внутреигровые функции
 
 async def spawn_players(ctx):
 
-    players_json = open('player/player_dict.json')
-    board_json = open('map/board.json')
-    values_json = open('ingame_values.json')
+    global player_dict
+    global board
 
-    player_dict = json.load(players_json)
-    board = json.load(board_json)
-    values = json.load(values_json)
+    values = load_values()
 
     xSpawn = values['spawn_point']['xCoord']
     ySpawn = values['spawn_point']['yCoord']
 
     spawn_point = board[xSpawn][ySpawn]
 
-    spawn_point['channel'] = await create_vc(ctx, spawn_point['type'])
+    spawn_point.channel = await create_vc(ctx, spawn_point.terrain)
 
     for user_id, player in player_dict.items():
-        spawn_point['players'].append(user_id)
-        player['xCoord'], player['yCoord'] = xSpawn, ySpawn
-        await move_to_vc(ctx, user_id, spawn_point['channel'])
-
-    players_json.close()
-    board_json.close()
-    values_json.close()
-
-    with open('player/player_dict.json', 'w') as f : json.dump(player_dict, f)
-    with open('map/board.json', 'w') as f : json.dump(board, f)
+        spawn_point.players.append(user_id)
+        player.xCoord, player.yCoord = xSpawn, ySpawn
+        await move_to_vc(ctx, user_id, spawn_point.channel)
 
 async def tick(self): #данная функция запускается тактовым генератором для каждого объекта player. она проверяет ряд значений полей объекта, изменяет их. выглядит неэффективно, определённо требует оптимизации
 

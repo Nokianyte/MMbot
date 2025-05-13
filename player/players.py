@@ -23,10 +23,11 @@ class Traits(Enum):
     A = 1
     B = 2
 
+player_dict = dict()
+
 class Player:
     def __init__(
         self, 
-        user: tuple, #discord user
         name: str, 
         text_channel_id: int, #каждому игроку генерируется личный текстовый канал для написания команд
         voice_channel_id: int, 
@@ -55,7 +56,6 @@ class Player:
 #        modStrength, 
         conditions: list
     ):
-        self.user = user
         self.name = name
         self.text_channel_id = text_channel_id
         self.voice_channel_id = voice_channel_id
@@ -155,39 +155,38 @@ class Player:
     def quit():
         pass
 
-player_dict = dict() #temporary
-
 def add_player(user_id, name, channel):
-    player_dict.update({ user_id : {
-            'name' : name,
-            'text_channel_id' : channel,
-            'voice_channel_id' : None,
-            'traits' : [],
-            'xCoord' : None,
-            'yCoord' : None,  
-            'inventory' : [], 
-            'action' : None,
-            'ticks' : 0,
-            'cooldown' : -1,
-            'active' : True,
-            'stats' : {
-                'Warmth' : 100,
-                'Hunger' : 100,
-                'Health' : 100,
-                'Sanity' : 100,
-                'Stamina' : 100,
-                'Weight' : 0
-            },
-            'maxWeight' : 5,
-            'modifiers' : {
-                'Warmth' : 0,
-                'Hunger' : 0,
-                'Health' : 0,
-                'Sanity' : 0,
-                'Stamina' : 0,
-                'Strength' : 0
-            },
-            'conditions' : []
-        }})  
-    
-    return None
+
+    global player_dict
+
+    player_dict.update({ user_id : Player(
+        name = name,
+        text_channel_id = channel,
+        voice_channel_id = None,
+        traits = [],
+        xCoord = None,
+        yCoord = None,  
+        inventory = [], 
+        action = None,
+        ticks = 0,
+        cooldown = -1,
+        active = True,
+        stats = {
+            'Warmth' : 100,
+            'Hunger' : 100,
+            'Health' : 100,
+            'Sanity' : 100,
+            'Stamina' : 100,
+            'Weight' : 0
+        },
+        maxWeight = 5,
+        modifiers = {
+            'Warmth' : 0,
+            'Hunger' : 0,
+            'Health' : 0,
+            'Sanity' : 0,
+            'Stamina' : 0,
+            'Strength' : 0
+        },
+        conditions = []
+    )}) 
