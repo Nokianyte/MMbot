@@ -75,8 +75,43 @@ async def clone(ctx, arg):
     description="quits the game",
     guild=discord.Object(id=1370677493685817344)
 )
-async def leave(ctx, user: discord.Member = None):
-    remove_player(user)
+async def leave(ctx):
+
+    players_json = open('player/player_dict.json')
+    board_json = open('map/board.json')
+    values_json = open('ingame_values.json')
+
+    player_dict = json.load(players_json)
+    board = json.load(board_json)
+    ing_values = json.load(values_json)
+
+    user = str(ctx.user.id)
+    player = player_dict[user]
+    tile = board[player['xCoord']][player['yCoord']]
+
+    await delete_channel(player['text_channel_id'])
+    player_dict.pop(user)
+    tile['players'].remove(user)
+
+    await move_to_vc(ctx, int(user), None)
+
+    if len(tile['players']) == 0:
+        tile['channel'] = await delete_channel(tile['channel'])
+
+    lobby_channel = client.get_channel(ing_values['lobby_channel_id'])
+
+    overwrite = discord.PermissionOverwrite()
+    overwrite.view_channel = True
+
+    await lobby_channel.set_permissions(ctx.user, overwrite = overwrite)
+
+    players_json.close()
+    board_json.close()
+    values_json.close()
+
+    with open('player/player_dict.json') as f : json.dump(player_dict, f)
+    with open('map/board.json') as f : json.dump(board, f)
+
 '''
 @client.command()
 async def stat(ctx, user: discord.Member = None):
@@ -90,7 +125,13 @@ async def stat(ctx, user: discord.Member = None):
     guild=discord.Object(id=1370677493685817344)
 )
 async def start(ctx):
-    lobby_channel = client.get_channel(1370677494147186761)
+
+    values_json = open('ingame_values.json')
+    ing_values = json.load(values_json)
+
+    lobby_channel = client.get_channel(ing_values['lobby_channel_id'])
+
+    values_json.close()
 
     for member in lobby_channel.members:
 
@@ -115,7 +156,7 @@ async def start(ctx):
 
     #Timer()
 
-    await ctx.response.send_message('Игра началась!',ephemeral=False)
+    await ctx.response.send_message('Игра началась!',ephemeral=True)
 
 @tree.command(
     name="move",

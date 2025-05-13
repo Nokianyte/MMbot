@@ -189,22 +189,5 @@ def add_player(user_id, name, channel):
             },
             'conditions' : []
         }})  
-
-def remove_player(user):
-    player_list.pop(find_player(user)) 
-'''
-def find_player(name):
-    for i in range(len(player_list)):
-        if player_list[i].name==name:
-            return i
-'''
-
-def fetch_player(user):
-    with open('player/player_list.json') as f:
-
-        player_list = json.load(f)
-
-        for player in player_list:
-            if player['user_id'] == user.id: return player
     
     return None
