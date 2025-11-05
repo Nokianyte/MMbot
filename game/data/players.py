@@ -50,6 +50,9 @@ class Player:
         self.modifiers = builder.modifiers
         self.conditions = builder.conditions
 
+        self.display = builder.display
+        self.map = builder.map
+
     def set_text_channel(self, id): self.text_channel_id = id
     def set_voice_channel(self, id): self.voice_channel_id = id
     def set_traits(self, traits): self.traits = traits
@@ -76,6 +79,8 @@ class Player:
     def set_modifiers(self, mod, value): self.modifiers[mod] = value
     def add_modifiers(self, mod, value): self.modifiers[mod] += value
     def set_conditions(self, conditions): self.conditions = conditions
+
+    def set_map(self, xCoord, yCoord, emoji): self.map[xCoord][yCoord] = emoji
 
 class PlayerBuilder:
     def __init__(self):
@@ -115,6 +120,10 @@ class PlayerBuilder:
             'Strength': 0
         }
         self.conditions = []
+        self.display = None,
+        self.map = []
+        for i in range(5):
+            self.map.append(['🌫️']*5)
 
     def with_name(self, name: str):
         self.name = name
@@ -126,6 +135,10 @@ class PlayerBuilder:
     
     def with_channel(self, channel: int):
         self.text_channel_id = channel
+        return self
+    
+    def with_display(self, display: dict):
+        self.display = display
         return self
 
     def build(self):

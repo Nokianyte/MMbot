@@ -3,7 +3,7 @@ from utils.helpers import create_vc, move_to_vc
 
 MAP_SIZE = 5
 
-SPAWN_COORDS = {"xCoord" : 0, "yCoord" : 0}
+SPAWN_COORDS = {"xCoord" : 2, "yCoord" : 2}
 
 ITEMS_SPAWN_AMMOUNT = 20
 
@@ -118,12 +118,20 @@ TILE_TYPES = {
         "neighbours" : [
             "Thicket",
             "Grove",
-            "Cliffs"
+            "Cliffs",
+            "Lake"
         ],
         "loot" : {
             "Berries": 0,
             "Mushroom": 0,
             "Wood": 0
+        },
+        "structures" : {
+            "Tent",
+            "Grave",
+            "Shack",
+            "Supplies",
+            "Plane debries"
         }
     },
     "Grove" : {
@@ -132,21 +140,35 @@ TILE_TYPES = {
             "Grove",
             "Thicket",
             "Meadow",
-            "Cliffs"
+            "Cliffs",
+            "Lake"
         ],
         "loot" : {
             "Berries": 0,
             "Mushroom": 0,
             "Wood": 0
+        },
+        "structures" : {
+            "Tent",
+            "Grave",
+            "Shack",
+            "Supplies",
+            "Plane debries"
         }
     },
     "Meadow" : {
         "emoji" : "🌾",
         "neighbours" : [
             "Meadow",
-            "Grove"
+            "Grove",
+            "Lake"
         ],
-        "loot" : {}
+        "loot" : {},
+        "structures" : {
+            "Grave",
+            "Supplies",
+            "Plane debries"
+        }
     },
     "Cliffs" : {
         "emoji" : "🗻",
@@ -157,6 +179,27 @@ TILE_TYPES = {
         ],
         "loot": {
             "Stone": 0
+        },
+        "structures" : {
+            "Shack",
+            "Supplies",
+            "Plane debries"
+        }
+    },
+    "Lake" : {
+        "emoji" : "🌊",
+        "neighbours" : [
+            "Thicket",
+            "Grove",
+            "Meadow",
+            "Lake"
+        ],
+        "loot": {
+            "Fish": 0
+        },
+        "structures" : {
+            "Supplies",
+            "Plane debries"
         }
     }
 }

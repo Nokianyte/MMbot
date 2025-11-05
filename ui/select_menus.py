@@ -4,7 +4,8 @@ from game.data.players import player_dict, Action
 from game.data.map import board, MAP_SIZE
 from game.data.items import Tags, ITEMS_DICT
 from game.data.values import SLEEPING_ROLE_ID, ATTACKING_ROLE_ID
-from utils.helpers import overwrite_profile, lock_in, give_role, create_vc, move_to_vc, delete_channel, message
+from game.functions import update_stat_display, update_map
+from utils.helpers import overwrite_profile, unregister_menu, give_role, remove_role, create_vc, move_to_vc, delete_channel, message
 
 class Profile(discord.ui.Select):
     def __init__(self, user_id, user_data):
@@ -154,29 +155,27 @@ class ActionSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
 
+        unregister_menu(self.ctx.user.id)
+
         match self.values[0]:
             case "Loot":
                 self.player.set_action(Action.LOOTING)
                 await interaction.response.edit_message(content="Looting...",view=None)
                 self.player.set_ticks(2)
-                lock_in(self.ctx)
 
             case "Sleep":
                 await give_role(self.ctx, self.ctx.user.id, SLEEPING_ROLE_ID)
                 await self.ctx.user.edit(mute=True, deafen=True)
                 self.player.set_action(Action.SLEEPING)
                 await interaction.response.edit_message(content="Sleeping...",view=None)
-                lock_in(self.ctx)
 
             case "Rest":
                 self.player.set_action(Action.RESTING)
                 await interaction.response.edit_message(content="Resting...",view=None)
-                lock_in(self.ctx)
 
             case "Cancel":
                 await interaction.response.edit_message(content="Interaction cancelled!", view=None)
                 await interaction.delete_original_response()
-                lock_in(self.ctx)
                 return
 
 class ActionView(discord.ui.View):
@@ -221,6 +220,8 @@ class Move(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
 
+        unregister_menu(interaction.user.id)
+
         old_tile = board[self.player.xCoord][self.player.yCoord]
 
         match self.values[0]:
@@ -255,8 +256,9 @@ class Move(discord.ui.Select):
             case "Cancel":
                 await interaction.response.edit_message(content="Movement cancelled!", view=None)
                 await interaction.delete_original_response()
-                lock_in(self.ctx)
                 return
+
+        await interaction.response.edit_message(content=f"Moved {self.values[0]}", view=None)
 
         old_tile.remove_player(self.ctx.user.id)
 
@@ -272,10 +274,8 @@ class Move(discord.ui.Select):
             old_tile.set_channel(await delete_channel(old_tile.channel))
 
         self.player.set_stats('Stamina', self.player.stats['Stamina'] - 60)
-
-        await interaction.response.edit_message(content=f"Moved {self.values[0]}", view=None)
-
-        lock_in(self.ctx)
+        #await update_stat_display(self.ctx.user.id, 'Stamina')
+        await update_map(self.ctx.user.id)
 
 class MoveView(discord.ui.View):
     def __init__(self, *, timeout = 60, ctx):
@@ -301,9 +301,9 @@ class Inventory(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
 
         if self.values[0] == "Back":
+            unregister_menu(self.ctx.user.id)
             await interaction.response.edit_message(content="Interaction cancelled!", view=None)
             await interaction.delete_original_response()
-            lock_in(self.ctx)
             return
 
         await interaction.response.edit_message(view=ItemView(ctx=self.ctx, item_name=self.values[0]))
@@ -370,6 +370,7 @@ class ItemSelect(discord.ui.Select):
             case "Eat":
                 self.player.set_stats("Hunger", self.player.stats["Hunger"] + self.item.value)
                 self.player.set_item(self.item_name, self.player.inventory[self.item_name] - 1)
+                await update_stat_display(self.ctx.user.id, 'Hunger')
                 if self.player.inventory[self.item_name] == 0: 
                     self.player.remove_item(self.item_name)
                     await interaction.response.edit_message(content="You have replenished your hunger", view=InventoryView(ctx=self.ctx))
@@ -410,9 +411,9 @@ class PlayerSelect(discord.ui.Select):
         target = int(self.values[0])
 
         if target == 0:
+            unregister_menu(self.ctx.user.id)
             await interaction.response.edit_message(content="Interaction cancelled!", view=None)
             await interaction.delete_original_response()
-            lock_in(self.ctx)
             return
         
         match self.action:
@@ -424,17 +425,27 @@ class PlayerSelect(discord.ui.Select):
                 self.player.set_action(Action.FIGHTING)
                 await give_role(self.ctx, self.ctx.user.id, ATTACKING_ROLE_ID)
 
+                """
+                if player_dict[target].action == Action.SLEEPING:
+
+                    await remove_role(self.ctx, target, SLEEPING_ROLE_ID)
+                    await ctx.user.edit(mute=False, deafen=False)
+                    player_dict[ctx.user.id].set_action(Action.RESTING)
+                """
+
                 player_dict[target].set_action(Action.FIGHTING)
                 await give_role(self.ctx, target, ATTACKING_ROLE_ID)
 
                 await message(target, f"You are attacked by {self.ctx.user.name}!")
-                player_dict[target].set_stats('Health', player_dict[target].stats['Health'] - 10)
+                player_dict[target].set_stats('Health', player_dict[target].stats['Health'] - player_dict[target].modifiers['Strength']) #later
+                await update_stat_display(target, 'Health')
                 player_dict[target].set_cooldown(player_dict[target].cooldown + 3)
                 self.player.set_cooldown(self.player.cooldown + 4)
                 self.player.set_stats('Stamina', self.player.stats['Stamina'] - 5)
+                await update_stat_display(self.ctx.user.id, 'Health')
 
                 await interaction.response.edit_message(content=f"You attacked {player_dict[target].name}!", view=None)
-                lock_in(self.ctx)
+                unregister_menu(self.ctx.user.id)
 
 class PlayerView(discord.ui.View):
     def __init__(self, *, timeout = 60, ctx, action):

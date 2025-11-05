@@ -1,6 +1,6 @@
 LOBBY_CHANNEL_ID = 1370677494147186761
 
-GAME_PACE = {"slow-paced" : 5, "fast-paced" : 2}
+GAME_PACE = {"slow-paced" : 10, "fast-paced" : 5}
 
 SLEEPING_ROLE_ID = 1372955478316814498
 

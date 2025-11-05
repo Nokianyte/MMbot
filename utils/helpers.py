@@ -3,10 +3,12 @@ from functools import wraps
 from bot.client import discord, client
 from game.data.players import player_dict
 
-active_players = set()
+active_menus = dict()
 
+'''
 def lock_in(ctx):
     active_players.discard(ctx.user.id)
+'''
 
 async def create_vc(ctx, channel_name):
     guild = ctx.guild
@@ -68,6 +70,43 @@ def overwrite_profile(user_id, new_data):
     with open('game/user_profiles.json', 'w') as f:
         json.dump(user_dict, f)
 
+def close_active_menu(func):
+
+    @wraps(func)
+    async def wrapper(interaction: discord.Interaction, *args, **kwargs):
+        user_id = interaction.user.id
+        
+        if user_id in active_menus:
+            menu_data = active_menus[user_id]
+            try:
+                channel = interaction.client.get_channel(menu_data['channel_id'])
+                if channel:
+                    message = await channel.fetch_message(menu_data['message_id'])
+                    await message.edit(
+                        content="Command cancelled by new input!",
+                        view=None
+                    )
+                    await message.delete()
+            except (discord.NotFound, discord.HTTPException, discord.Forbidden):
+                pass
+            finally:
+                del active_menus[user_id]
+        
+        return await func(interaction, *args, **kwargs)
+
+    return wrapper
+
+def register_menu(user_id: int, message: discord.Message):
+    active_menus[user_id] = {
+        'message_id': message.id,
+        'channel_id': message.channel.id
+    }
+
+def unregister_menu(user_id: int):
+    if user_id in active_menus:
+        del active_menus[user_id]
+
+'''
 def no_concurrent(func):
 
     global active_players
@@ -86,6 +125,7 @@ def no_concurrent(func):
         return await func(ctx, *args, **kwargs)
 
     return wrapper
+'''
 
 def on_cooldown(func):
     
