@@ -1,27 +1,55 @@
 from bot.client import discord
 
 DISPLAY_CONFIG = {
-    'stats': {
-        'title': '🩻',
+    'Sanity': {
+        'title': '🧠',
         'channels': {
-            'text': [
-                {'index': 'Sanity', 'title': '🧠|🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'send_messages': False}},
-                {'index': 'Hunger', 'title': '👅|🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'send_messages': False}},
-                {'index': 'Health', 'title': '🫀|🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'send_messages': False}},
-                {'index': 'Stamina', 'title': '🫁|🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'send_messages': False}},
-                {'index': 'Warmth', 'title': '🌡|🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'send_messages': False}}
+            'voice': [
+                {'index': None, 'title': '🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'connect': False}}
             ]
         }
     },
-    'map': {
+    'Hunger': {
+        'title': '👅',
+        'channels': {
+            'voice': [
+                {'index': None, 'title': '🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'connect': False}}
+            ]
+        }
+    },
+    'Health': {
+        'title': '🫀',
+        'channels': {
+            'voice': [
+                {'index': None, 'title': '🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'connect': False}}
+            ]
+        }
+    },
+    'Stamina': {
+        'title': '🫁',
+        'channels': {
+            'voice': [
+                {'index': None, 'title': '🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'connect': False}}
+            ]
+        }
+    },
+    'Temperature': {
+        'title': '🌡',
+        'channels': {
+            'voice': [
+                {'index': None, 'title': '🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', 'permissions': {'connect': False}}
+            ]
+        }
+    },
+    'Map': {
         'title': '🗺️',
         'channels': {
-            'text': [
-                {'index': 0, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'send_messages': False}},
-                {'index': 1, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'send_messages': False}},
-                {'index': 2, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'send_messages': False}},
-                {'index': 3, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'send_messages': False}},
-                {'index': 4, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'send_messages': False}}
+            'voice': [
+                {'index': 0, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'connect': False}},
+                {'index': 1, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'connect': False}},
+                {'index': 2, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'connect': False}},
+                {'index': 3, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'connect': False}},
+                {'index': 4, 'title': '🌫️🌫️🌫️🌫️🌫️', 'permissions': {'connect': False}}
             ]
         }
     }
@@ -33,7 +61,7 @@ class DisplayFactory:
         self.member = member
         self.created_channels = {}
     
-    async def create_category_with_channels(self, category_title, channel_configs):
+    async def create_category_with_channels(self, key, category_title, channel_configs):
         category = await self.guild.create_category_channel(
             category_title,
             overwrites=self._get_base_overwrites()
@@ -57,7 +85,7 @@ class DisplayFactory:
             )
             channels[config['index']] = channel
         
-        self.created_channels[category_title] = {
+        self.created_channels[key] = {
             'category': category,
             'channels': channels
         }
@@ -96,4 +124,5 @@ class DisplayFactory:
                 'category_id': data['category'].id,
                 'channels': {index: channel.id for index, channel in data['channels'].items()}
             }
+        print(result)
         return result

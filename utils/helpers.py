@@ -2,6 +2,7 @@ import json
 from functools import wraps
 from bot.client import discord, client
 from game.data.players import player_dict
+from game.data.values import GUILD_ID
 
 active_menus = dict()
 
@@ -10,8 +11,8 @@ def lock_in(ctx):
     active_players.discard(ctx.user.id)
 '''
 
-async def create_vc(ctx, channel_name):
-    guild = ctx.guild
+async def create_vc(channel_name):
+    guild = client.get_guild(GUILD_ID) 
 
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False)
@@ -25,9 +26,10 @@ async def delete_channel(id):
     await channel.delete()
     return None
 
-async def move_to_vc(ctx, user_id, channel_id):
+async def move_to_vc(user_id, channel_id):
+    guild = client.get_guild(GUILD_ID) 
     channel = client.get_channel(channel_id)
-    user = await ctx.guild.fetch_member(user_id)
+    user = await guild.fetch_member(user_id)
     await user.move_to(channel)
 
 async def message(user_id, message):
@@ -37,14 +39,16 @@ async def message(user_id, message):
     channel = client.get_channel(player_dict[user_id].text_channel_id)
     await channel.send(message)
 
-async def give_role(ctx, user_id, role_id):
-    role = ctx.guild.get_role(role_id)
-    user = await ctx.guild.fetch_member(user_id)
+async def give_role(user_id, role_id):
+    guild = client.get_guild(GUILD_ID) 
+    role = guild.get_role(role_id)
+    user = await guild.fetch_member(user_id)
     await user.add_roles(role)
 
-async def remove_role(ctx, user_id, role_id):
-    role = ctx.guild.get_role(role_id)
-    user = await ctx.guild.fetch_member(user_id)
+async def remove_role(user_id, role_id):
+    guild = client.get_guild(GUILD_ID)
+    role = guild.get_role(role_id)
+    user = await guild.fetch_member(user_id)
     await user.remove_roles(role)
 
 def load_profile(user_id):

@@ -7,7 +7,7 @@ from game.data.display import DisplayFactory, DISPLAY_CONFIG
 from game.data.items import ITEMS_DICT
 from game.data.players import player_dict, PlayerBuilder, Action, Condition, add_player, set_player
 from game.data.map import board, generate_board, spawn_players, set_board
-from game.data.values import LOBBY_CHANNEL_ID
+from game.data.values import GUILD_ID, LOBBY_CHANNEL_ID
 from utils.helpers import message, load_profile
 
 import logging
@@ -34,8 +34,9 @@ async def start_game(ctx, pace):
 
         display_factory = DisplayFactory(ctx.guild, member)
         
-        for config in DISPLAY_CONFIG.values():
+        for key, config in DISPLAY_CONFIG.items():
             await display_factory.create_category_with_channels(
+                key,
                 config['title'],
                 config['channels']
             )
@@ -50,7 +51,7 @@ async def start_game(ctx, pace):
 
     generate_board()
 
-    await spawn_players(ctx, player_dict)
+    await spawn_players(player_dict)
 
     for player in player_dict.keys(): await update_map(player)
 
@@ -74,19 +75,19 @@ def create_bar(value):
     return color*int(value//10) + "⬛"*int(10-value//10)
 
 async def update_stat_display(user_id, stat):
-    pass
-'''
     percentage = player_dict[user_id].stats[stat] + 5
     if percentage//10 > 7: color = "🟩"
     elif percentage//10 > 5: color = "🟨"
     elif percentage//10 > 2: color = "🟧"
     else: color = "🟥"
 
-    channel = client.get_channel(player_dict[user_id].display['🩻']['channels'][index])
-    await channel.edit(name=(channel.name[:1] + color*int(percentage//10) + "⬛"*int(10-percentage//10)))'''
+    channel = client.get_channel(player_dict[user_id].display[stat]['channels'][None])
+    await channel.edit(name=(color*int(percentage//10) + "⬛"*int(10-percentage//10)))
 
 
-async def update_map(user_id):
+async def update_map(user_id): # Note: ограничиться user_id на вход, для создания канала выделить отдельную функциюю
+    guild = client.get_guild(GUILD_ID) 
+
     player = player_dict[user_id]
     player.set_map(player.xCoord, player.yCoord, player.avatar[0])
 
@@ -96,11 +97,17 @@ async def update_map(user_id):
     if player.xCoord > 0: player.set_map(player.xCoord - 1, player.yCoord, board[player.xCoord - 1][player.yCoord].emoji[0])
 
     for column in range(len(player.map)):
-        channel = client.get_channel(player_dict[user_id].display['🗺️']['channels'][column])
+        channel = client.get_channel(player.display['Map']['channels'][column])
         name=''
         for row in range(len(player.map)):
             name += player.map[row][4 - column]
-        await channel.edit(name=(name))
+        await channel.delete()
+        category = guild.get_channel(player.display['Map']['category_id'])
+        new_channel = await guild.create_voice_channel(
+            name=name,
+            category=category
+        )
+        player.set_display_channel_id('Map', column, new_channel.id)
 
 
 async def tick(user_id):

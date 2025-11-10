@@ -140,10 +140,10 @@ class HairView(discord.ui.View):
 #IN-GAME
 
 class ActionSelect(discord.ui.Select):
-    def __init__(self, ctx):
+    def __init__(self, user_id):
 
-        self.ctx = ctx
-        self.player = player_dict[ctx.user.id]
+        self.user_id = user_id
+        self.player = player_dict[user_id]
 
         options=[
             discord.SelectOption(label="Loot",emoji="🔎",description="Search for items"),
@@ -155,7 +155,7 @@ class ActionSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
 
-        unregister_menu(self.ctx.user.id)
+        unregister_menu(self.user_id)
 
         match self.values[0]:
             case "Loot":
@@ -164,8 +164,8 @@ class ActionSelect(discord.ui.Select):
                 self.player.set_ticks(2)
 
             case "Sleep":
-                await give_role(self.ctx, self.ctx.user.id, SLEEPING_ROLE_ID)
-                await self.ctx.user.edit(mute=True, deafen=True)
+                await give_role(self.user_id, SLEEPING_ROLE_ID)
+#                await self.ctx.user.edit(mute=True, deafen=True)
                 self.player.set_action(Action.SLEEPING)
                 await interaction.response.edit_message(content="Sleeping...",view=None)
 
@@ -179,10 +179,10 @@ class ActionSelect(discord.ui.Select):
                 return
 
 class ActionView(discord.ui.View):
-    def __init__(self, *, timeout = 60, ctx):
-        self.ctx = ctx
+    def __init__(self, *, timeout = 60, user_id):
+        self.user_id = user_id
         super().__init__(timeout=timeout)
-        self.add_item(ActionSelect(ctx=self.ctx))
+        self.add_item(ActionSelect(user_id=self.user_id))
 
 
 
@@ -192,10 +192,10 @@ class Move(discord.ui.Select):
     global board
     global MAP_SIZE
 
-    def __init__(self, ctx):
+    def __init__(self, user_id):
 
-        self.ctx = ctx
-        self.player = player_dict[ctx.user.id]
+        self.user_id = user_id
+        self.player = player_dict[user_id]
 
         if self.player.yCoord < len(board)-1: north_emoji = board[self.player.xCoord][self.player.yCoord + 1].emoji[0]
         else: north_emoji = board[self.player.xCoord][0].emoji[0]
@@ -260,36 +260,36 @@ class Move(discord.ui.Select):
 
         await interaction.response.edit_message(content=f"Moved {self.values[0]}", view=None)
 
-        old_tile.remove_player(self.ctx.user.id)
+        old_tile.remove_player(self.user_id)
 
         if len(new_tile.players) == 0:
-            channel = await create_vc(self.ctx, new_tile.emoji)
+            channel = await create_vc(new_tile.emoji)
             new_tile.set_channel(channel)
 
-        new_tile.append_player(self.ctx.user.id)
+        new_tile.append_player(self.user_id)
 
-        await move_to_vc(self.ctx, self.ctx.user.id, new_tile.channel)
+        await move_to_vc(self.user_id, new_tile.channel)
 
         if len(old_tile.players) == 0:
             old_tile.set_channel(await delete_channel(old_tile.channel))
 
         self.player.set_stats('Stamina', self.player.stats['Stamina'] - 60)
-        #await update_stat_display(self.ctx.user.id, 'Stamina')
-        await update_map(self.ctx.user.id)
+        await update_stat_display(self.user_id, 'Stamina')
+        await update_map(self.user_id)
 
 class MoveView(discord.ui.View):
-    def __init__(self, *, timeout = 60, ctx):
-        self.ctx = ctx
+    def __init__(self, *, timeout = 60, user_id):
+        self.user_id = user_id
         super().__init__(timeout=timeout)
-        self.add_item(Move(ctx=self.ctx))
+        self.add_item(Move(user_id=self.user_id))
 
 
 
 class Inventory(discord.ui.Select):
-    def __init__(self, ctx):
+    def __init__(self, user_id):
 
-        self.ctx = ctx
-        self.player = player_dict[ctx.user.id]
+        self.user_id = user_id
+        self.player = player_dict[user_id]
 
         options=[
             discord.SelectOption(label=f"{item} [{ammount}]",value=item,emoji=ITEMS_DICT[item].emoji,description=ITEMS_DICT[item].description) for item, ammount in self.player.inventory.items()
@@ -301,28 +301,28 @@ class Inventory(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
 
         if self.values[0] == "Back":
-            unregister_menu(self.ctx.user.id)
+            unregister_menu(self.user_id)
             await interaction.response.edit_message(content="Interaction cancelled!", view=None)
             await interaction.delete_original_response()
             return
 
-        await interaction.response.edit_message(view=ItemView(ctx=self.ctx, item_name=self.values[0]))
+        await interaction.response.edit_message(view=ItemView(ctx=self.user_id, item_name=self.values[0]))
 
 class InventoryView(discord.ui.View):
-    def __init__(self, *, timeout = 60, ctx):
-        self.ctx = ctx
+    def __init__(self, *, timeout = 60, user_id):
+        self.user_id = user_id
         super().__init__(timeout=timeout)
-        self.add_item(Inventory(ctx=self.ctx))
+        self.add_item(Inventory(user_id=self.user_id))
 
 
 
 class ItemSelect(discord.ui.Select):
-    def __init__(self, ctx, item_name):
+    def __init__(self, user_id, item_name):
 
-        self.ctx = ctx
+        self.user_id = user_id
         self.item_name = item_name
         self.item = ITEMS_DICT[item_name]
-        self.player = player_dict[ctx.user.id]
+        self.player = player_dict[user_id]
 
         options=[]
 
@@ -359,48 +359,48 @@ class ItemSelect(discord.ui.Select):
 
         match self.values[0]:
             case "Back":
-                await interaction.response.edit_message(content=None, view=InventoryView(ctx=self.ctx))
+                await interaction.response.edit_message(content=None, view=InventoryView(user_id=self.user_id))
                 return
             case "Give":
                 if len(board[self.player.xCoord][self.player.yCoord].players) > 1:
-                    await interaction.response.edit_message(view=PlayerView(ctx=self.ctx, action="give"))
+                    await interaction.response.edit_message(view=PlayerView(user_id=self.user_id, action="give"))
                 else:
                     await interaction.response.send_message(content="No valid targets!", ephemeral=True)
                 return               
             case "Eat":
                 self.player.set_stats("Hunger", self.player.stats["Hunger"] + self.item.value)
                 self.player.set_item(self.item_name, self.player.inventory[self.item_name] - 1)
-                await update_stat_display(self.ctx.user.id, 'Hunger')
+                await update_stat_display(self.user_id, 'Hunger')
                 if self.player.inventory[self.item_name] == 0: 
                     self.player.remove_item(self.item_name)
-                    await interaction.response.edit_message(content="You have replenished your hunger", view=InventoryView(ctx=self.ctx))
+                    await interaction.response.edit_message(content="You have replenished your hunger", view=InventoryView(user_id=self.user_id))
                 else:
-                    await interaction.response.edit_message(content="You have replenished your hunger", view=ItemView(ctx=self.ctx, item_name=self.item_name))
+                    await interaction.response.edit_message(content="You have replenished your hunger", view=ItemView(user_id=self.user_id, item_name=self.item_name))
             case "Equip":
                 self.player.set_equipment(self.item.tags, self.item_name)
-                await interaction.response.edit_message(content=f"Equiped {self.item_name}", view=ItemView(ctx=self.ctx, item_name=self.item_name))
+                await interaction.response.edit_message(content=f"Equiped {self.item_name}", view=ItemView(user_id=self.user_id, item_name=self.item_name))
             case "Unequip":
                 self.player.set_equipment(self.item.tags, None)
-                await interaction.response.edit_message(content=f"Unequipped {self.item_name}", view=ItemView(ctx=self.ctx, item_name=self.item_name))
+                await interaction.response.edit_message(content=f"Unequipped {self.item_name}", view=ItemView(user_id=self.user_id, item_name=self.item_name))
 
 class ItemView(discord.ui.View):
-    def __init__(self, *, timeout = 60, ctx, item_name):
-        self.ctx = ctx
+    def __init__(self, *, timeout = 60, user_id, item_name):
+        self.user_id = user_id
         self.item_name = item_name
         super().__init__(timeout=timeout)
-        self.add_item(ItemSelect(ctx=self.ctx, item_name=self.item_name))
+        self.add_item(ItemSelect(user_id=self.user_id, item_name=self.item_name))
 
 
 
 
 class PlayerSelect(discord.ui.Select):
-    def __init__(self, ctx, action):
+    def __init__(self, user_id, action):
 
-        self.ctx = ctx
+        self.user_id = user_id
         self.action = action
-        self.player = player_dict[ctx.user.id]
+        self.player = player_dict[user_id]
 
-        options=[discord.SelectOption(label=player_dict[player].name,value=player,emoji=player_dict[player].avatar) for player in board[self.player.xCoord][self.player.yCoord].players if player != ctx.user.id]
+        options=[discord.SelectOption(label=player_dict[player].name,value=player,emoji=player_dict[player].avatar) for player in board[self.player.xCoord][self.player.yCoord].players if player != user_id]
 
         options.append(discord.SelectOption(label="Cancel",value=0,emoji="↩️"))
 
@@ -411,7 +411,7 @@ class PlayerSelect(discord.ui.Select):
         target = int(self.values[0])
 
         if target == 0:
-            unregister_menu(self.ctx.user.id)
+            unregister_menu(self.user_id)
             await interaction.response.edit_message(content="Interaction cancelled!", view=None)
             await interaction.delete_original_response()
             return
@@ -423,7 +423,7 @@ class PlayerSelect(discord.ui.Select):
 
             case "attack":
                 self.player.set_action(Action.FIGHTING)
-                await give_role(self.ctx, self.ctx.user.id, ATTACKING_ROLE_ID)
+                await give_role(self.user_id, ATTACKING_ROLE_ID)
 
                 """
                 if player_dict[target].action == Action.SLEEPING:
@@ -434,22 +434,22 @@ class PlayerSelect(discord.ui.Select):
                 """
 
                 player_dict[target].set_action(Action.FIGHTING)
-                await give_role(self.ctx, target, ATTACKING_ROLE_ID)
+                await give_role(target, ATTACKING_ROLE_ID)
 
-                await message(target, f"You are attacked by {self.ctx.user.name}!")
+                await message(target, f"You are attacked by {self.player.name}!")
                 player_dict[target].set_stats('Health', player_dict[target].stats['Health'] - player_dict[target].modifiers['Strength']) #later
                 await update_stat_display(target, 'Health')
                 player_dict[target].set_cooldown(player_dict[target].cooldown + 3)
                 self.player.set_cooldown(self.player.cooldown + 4)
                 self.player.set_stats('Stamina', self.player.stats['Stamina'] - 5)
-                await update_stat_display(self.ctx.user.id, 'Health')
+                await update_stat_display(self.user_id, 'Health')
 
                 await interaction.response.edit_message(content=f"You attacked {player_dict[target].name}!", view=None)
-                unregister_menu(self.ctx.user.id)
+                unregister_menu(self.user_id)
 
 class PlayerView(discord.ui.View):
-    def __init__(self, *, timeout = 60, ctx, action):
-        self.ctx = ctx
+    def __init__(self, *, timeout = 60, user_id, action):
+        self.user_id = user_id
         self.action = action
         super().__init__(timeout=timeout)
-        self.add_item(PlayerSelect(ctx=self.ctx, action=self.action))
+        self.add_item(PlayerSelect(user_id=self.user_id, action=self.action))

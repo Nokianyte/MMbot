@@ -1,8 +1,9 @@
 from bot.client import discord, client, tree
+from game.data.values import GUILD_ID
 
 @client.event
 async def on_ready():
-    await tree.sync(guild=discord.Object(id=1370677493685817344))
+    await tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Ready!")
 
 

@@ -81,6 +81,7 @@ class Player:
     def set_conditions(self, conditions): self.conditions = conditions
 
     def set_map(self, xCoord, yCoord, emoji): self.map[xCoord][yCoord] = emoji
+    def set_display_channel_id(self, category, index, new_id): self.display[category]['channels'][index] = new_id
 
 class PlayerBuilder:
     def __init__(self):

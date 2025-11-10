@@ -92,21 +92,21 @@ def generate_board():
         for y in range(MAP_SIZE):
             board[x][y] = TileBuilder().with_coords(x, y).build()
 
-async def spawn_players(ctx, player_dict):
+async def spawn_players(player_dict):
 
     xSpawn = SPAWN_COORDS['xCoord']
     ySpawn = SPAWN_COORDS['yCoord']
 
     spawn_point = board[xSpawn][ySpawn]
 
-    spawn_point.channel = await create_vc(ctx, spawn_point.emoji)
+    spawn_point.channel = await create_vc(spawn_point.emoji)
 
     for user_id, player in player_dict.items():
         spawn_point.append_player(user_id)
         player.set_xCoord(xSpawn) 
         player.set_yCoord(ySpawn)
         player.set_voice_channel(spawn_point.channel)
-        await move_to_vc(ctx, user_id, spawn_point.channel)
+        await move_to_vc(user_id, spawn_point.channel)
 
 def set_board(new_board):
     global board
